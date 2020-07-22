@@ -73,11 +73,9 @@ __anon0f5116480203	drw.h	/^enum { ColFg, ColBg }; \/* Clr scheme index *\/$/;"	g
 __anon0f5116480308	drw.h	/^typedef struct {$/;"	s
 __anon1b2399ef0103	dmenu.c	/^enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; \/* color schemes *\/$/;"	g	file:
 all	Makefile	/^all: options dmenu stest$/;"	t
-alphas	config.def.h	/^static const unsigned int alphas[SchemeLast][2] = {$/;"	v	typeref:typename:const unsigned int[][2]
 alphas	config.h	/^static const unsigned int alphas[SchemeLast][2] = {$/;"	v	typeref:typename:const unsigned int[][2]
 appenditem	dmenu.c	/^appenditem(struct item *item, struct item **list, struct item **last)$/;"	f	typeref:typename:void	file:
 argv0	stest.c	/^char *argv0;$/;"	v	typeref:typename:char *
-bgalpha	config.def.h	/^static const unsigned int bgalpha = 0xe0;$/;"	v	typeref:typename:const unsigned int
 bgalpha	config.h	/^static const unsigned int bgalpha = 0xe0;$/;"	v	typeref:typename:const unsigned int
 bh	dmenu.c	/^static int bh, mw, mh;$/;"	v	typeref:typename:int	file:
 calcoffsets	dmenu.c	/^calcoffsets(void)$/;"	f	typeref:typename:void	file:
@@ -87,7 +85,6 @@ cleanup	dmenu.c	/^cleanup(void)$/;"	f	typeref:typename:void	file:
 clip	dmenu.c	/^static Atom clip, utf8;$/;"	v	typeref:typename:Atom	file:
 cmap	dmenu.c	/^static Colormap cmap;$/;"	v	typeref:typename:Colormap	file:
 cmap	drw.h	/^	Colormap cmap;$/;"	m	struct:__anon0f5116480308	typeref:typename:Colormap
-colors	config.def.h	/^static const char *colors[SchemeLast][2] = {$/;"	v	typeref:typename:const char * [][2]
 colors	config.h	/^static const char *colors[SchemeLast][2] = {$/;"	v	typeref:typename:const char * [][2]
 config.h	Makefile	/^config.h:$/;"	t
 curr	dmenu.c	/^static struct item *prev, *curr, *next, *sel;$/;"	v	typeref:struct:item **	file:
@@ -124,10 +121,8 @@ drw_setscheme	drw.c	/^drw_setscheme(Drw *drw, Clr *scm)$/;"	f	typeref:typename:v
 drw_text	drw.c	/^drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lpad, const char */;"	f	typeref:typename:int
 ecalloc	util.c	/^ecalloc(size_t nmemb, size_t size)$/;"	f	typeref:typename:void *
 embed	dmenu.c	/^static char *embed;$/;"	v	typeref:typename:char *	file:
-fgalpha	config.def.h	/^static const unsigned int fgalpha = OPAQUE;$/;"	v	typeref:typename:const unsigned int
 fgalpha	config.h	/^static const unsigned int fgalpha = OPAQUE;$/;"	v	typeref:typename:const unsigned int
 flag	stest.c	/^static int flag[26];$/;"	v	typeref:typename:int[26]	file:
-fonts	config.def.h	/^static const char *fonts[] = {$/;"	v	typeref:typename:const char * []
 fonts	config.h	/^static const char *fonts[] = {$/;"	v	typeref:typename:const char * []
 fonts	drw.h	/^	Fnt *fonts;$/;"	m	struct:__anon0f5116480308	typeref:typename:Fnt *
 fstrncmp	dmenu.c	/^static int (*fstrncmp)(const char *, const char *, size_t) = strncasecmp;$/;"	v	typeref:typename:int (*)(const char *,const char *,size_t)	file:
@@ -144,7 +139,6 @@ item	dmenu.c	/^struct item {$/;"	s	file:
 items	dmenu.c	/^static struct item *items = NULL;$/;"	v	typeref:struct:item *	file:
 keypress	dmenu.c	/^keypress(XKeyEvent *ev)$/;"	f	typeref:typename:void	file:
 left	dmenu.c	/^	struct item *left, *right;$/;"	m	struct:item	typeref:struct:item *	file:
-lines	config.def.h	/^static unsigned int lines      = 10;$/;"	v	typeref:typename:unsigned int
 lines	config.h	/^static unsigned int lines      = 10;$/;"	v	typeref:typename:unsigned int
 lrpad	dmenu.c	/^static int lrpad; \/* sum of left and right padding *\/$/;"	v	typeref:typename:int	file:
 main	dmenu.c	/^main(int argc, char *argv[])$/;"	f	typeref:typename:int
@@ -169,7 +163,6 @@ parentwin	dmenu.c	/^static Window root, parentwin, win;$/;"	v	typeref:typename:W
 paste	dmenu.c	/^paste(void)$/;"	f	typeref:typename:void	file:
 pattern	drw.h	/^	FcPattern *pattern;$/;"	m	struct:Fnt	typeref:typename:FcPattern *
 prev	dmenu.c	/^static struct item *prev, *curr, *next, *sel;$/;"	v	typeref:struct:item *	file:
-prompt	config.def.h	/^static const char *prompt      = NULL;      \/* -p  option; prompt to the left of input field *\/$/;"	v	typeref:typename:const char *
 prompt	config.h	/^static const char *prompt      = NULL;      \/* -p  option; prompt to the left of input field *\/$/;"	v	typeref:typename:const char *
 promptw	dmenu.c	/^static int inputw = 0, promptw;$/;"	v	typeref:typename:int	file:
 readstdin	dmenu.c	/^readstdin(void)$/;"	f	typeref:typename:void	file:
@@ -188,7 +181,6 @@ stest	Makefile	/^stest: stest.o$/;"	t
 test	stest.c	/^test(const char *path, const char *name)$/;"	f	typeref:typename:void	file:
 text	dmenu.c	/^	char *text;$/;"	m	struct:item	typeref:typename:char *	file:
 text	dmenu.c	/^static char text[BUFSIZ] = "";$/;"	v	typeref:typename:char[]	file:
-topbar	config.def.h	/^static int topbar = 0;                      \/* -b  option; if 0, dmenu appears at bottom     *\/$/;"	v	typeref:typename:int
 topbar	config.h	/^static int topbar = 0;                      \/* -b  option; if 0, dmenu appears at bottom     *\/$/;"	v	typeref:typename:int
 uninstall	Makefile	/^uninstall:$/;"	t
 usage	dmenu.c	/^usage(void)$/;"	f	typeref:typename:void	file:
@@ -206,7 +198,6 @@ visual	dmenu.c	/^static Visual *visual;$/;"	v	typeref:typename:Visual *	file:
 visual	drw.h	/^	Visual *visual;$/;"	m	struct:__anon0f5116480308	typeref:typename:Visual *
 w	drw.h	/^	unsigned int w, h;$/;"	m	struct:__anon0f5116480308	typeref:typename:unsigned int
 win	dmenu.c	/^static Window root, parentwin, win;$/;"	v	typeref:typename:Window	file:
-worddelimiters	config.def.h	/^static const char worddelimiters[] = " ";$/;"	v	typeref:typename:const char[]
 worddelimiters	config.h	/^static const char worddelimiters[] = " ";$/;"	v	typeref:typename:const char[]
 xfont	drw.h	/^	XftFont *xfont;$/;"	m	struct:Fnt	typeref:typename:XftFont *
 xfont_create	drw.c	/^xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)$/;"	f	typeref:typename:Fnt *	file:
