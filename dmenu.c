@@ -33,21 +33,22 @@
 enum {
 	SchemeNorm,
 	SchemeSel,
+	SchemeHp,
 	SchemeOut,
 	SchemeNormHighlight,
 	SchemeSelHighlight,
-	SchemeHp,
 	SchemeLast,
 }; /* color schemes */
 
 struct item {
 	char *text;
 	struct item *left, *right;
-	int out;
-	int hp;
+	int out, hp;
 	double distance;
 };
 
+static char **hpitems = NULL;
+static int hplength = 0;
 static char text[BUFSIZ] = "";
 static char pipeout[8] = " | dmenu";
 static char *embed;
@@ -60,8 +61,10 @@ static struct item *items = NULL;
 static struct item *matches, *matchend;
 static struct item *prev, *curr, *next, *sel;
 static int mon = -1, screen;
+static int managed = 0;
 
 static Atom clip, utf8;
+static Atom type, dock;
 static Display *dpy;
 static Window root, parentwin, win;
 static XIC xic;
@@ -82,6 +85,37 @@ static char * cistrstr(const char *s, const char *sub);
 static int (*fstrncmp)(const char *, const char *, size_t) = strncasecmp;
 static char *(*fstrstr)(const char *, const char *) = cistrstr;
 
+static char**
+tokenize(char *source, const char *delim, int *llen) {
+	int listlength = 0;
+	char **list = malloc(1 * sizeof(char*));
+	char *token = strtok(source, delim);
+
+	while (token) {
+		if (!(list = realloc(list, sizeof(char*) * (listlength + 1))))
+			die("Unable to realloc %d bytes\n", sizeof(char*) * (listlength + 1));
+		if (!(list[listlength] = strdup(token)))
+			die("Unable to strdup %d bytes\n", strlen(token) + 1);
+		token = strtok(NULL, delim);
+		listlength++;
+	}
+
+	*llen = listlength;
+	return list;
+}
+
+static int
+arrayhas(char **list, int length, char *item) {
+	for (int i = 0; i < length; i++) {
+		int len1 = strlen(list[i]);
+		int len2 = strlen(item);
+		if (fstrncmp(list[i], item, len1 > len2 ? len2 : len1) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+
 static void appenditem(struct item *item, struct item **list, struct item **last);
 static void calcoffsets(void);
 static void cleanup(void);
@@ -97,7 +131,7 @@ static void movewordedge(int dir);
 static void keypress(XKeyEvent *ev);
 static void paste(void);
 static void xinitvisual(void);
-static void readstdin(void);
+/*static void readstdin(void);*/
 static void run(void);
 static void setup(void);
 static void usage(void);
@@ -125,7 +159,7 @@ calcoffsets(void)
 	if (lines > 0)
 		n = lines * bh;
 	else
-		n = mw - (promptw + inputw + TEXTW("<") + TEXTW(">"));
+		n = mw - (promptw + inputw + TEXTW(symbol_1) + TEXTW(symbol_2));
 	/* calculate which items will begin the next page and previous page */
 	for (i = 0, next = curr; next; next = next->right)
 		if ((i += (lines > 0) ? bh : MIN(TEXTW(next->text), n)) > n)
@@ -227,11 +261,11 @@ drawmenu(void)
 		}
 		x += w;
 		for (item = curr; item != next; item = item->right)
-			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">") - rpad));
+			x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(symbol_2) - rpad));
 		if (next) {
-			w = TEXTW(">");
+			w = TEXTW(symbol_2);
 			drw_setscheme(drw, scheme[SchemeNorm]);
-			drw_text(drw, mw - w - rpad, 0, w, bh, lrpad / 2, ">", 0);
+			drw_text(drw, mw - w, 0, w, bh, lrpad / 2, symbol_2, 0);
 		}
 	}
 	drw_setscheme(drw, scheme[SchemeSel]);
@@ -250,7 +284,6 @@ grabfocus(void)
 		XGetInputFocus(dpy, &focuswin, &revertwin);
 		if (focuswin == win)
 			return;
-		XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
 		nanosleep(&ts, NULL);
 	}
 	die("cannot grab focus");
@@ -262,7 +295,7 @@ grabkeyboard(void)
 	struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000  };
 	int i;
 
-	if (embed)
+	if (embed || managed)
 		return;
 	/* try to grab keyboard, we may have to wait for another process to ungrab */
 	for (i = 0; i < 1000; i++) {
@@ -274,9 +307,32 @@ grabkeyboard(void)
 	die("cannot grab keyboard");
 }
 
+static void readstdin(FILE* stream);
+
+static void
+refreshoptions(){
+	int dynlen = strlen(dynamic);
+	char* cmd= malloc(dynlen + strlen(text)+2);
+	if(cmd == NULL)
+		die("malloc:");
+	sprintf(cmd,"%s %s",dynamic, text);
+	FILE *stream = popen(cmd, "r");
+	if(!stream)
+		die("popen(%s):",cmd);
+	readstdin(stream);
+	int pc = pclose(stream);
+	if(pc == -1)
+		die("pclose:");
+	free(cmd);
+	curr = sel = items;
+}
+
 static void
 match(void)
 {
+	if(dynamic && *dynamic){
+		refreshoptions();
+	}
 
 	if (fuzzy) {
 		fuzzymatch();
@@ -288,8 +344,7 @@ match(void)
 	char buf[sizeof text], *s;
 	int i, tokc = 0;
 	size_t len, textsize;
-	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
-	struct item *lhpprefix, *hpprefixend;
+	struct item *item, *lhpprefix, *lprefix, *lsubstr, *hpprefixend, *prefixend, *substrend;
 
 	strcpy(buf, text);
 	/* separate input text into tokens to be matched individually */
@@ -298,20 +353,14 @@ match(void)
 			die("cannot realloc %u bytes:", tokn * sizeof *tokv);
 	len = tokc ? strlen(tokv[0]) : 0;
 
-	if (use_prefix) {
-		matches = lprefix = matchend = prefixend = NULL;
-		textsize = strlen(text);
-	} else {
-		matches = lprefix = lsubstr = matchend = prefixend = substrend = NULL;
-		textsize = strlen(text) + 1;
-	}
-	lhpprefix = hpprefixend = NULL;
+	matches = lhpprefix = lprefix = lsubstr = matchend = hpprefixend = prefixend = substrend = NULL;
+	textsize = strlen(text) + 1;
 	for (item = items; item && item->text; item++)
 	{
 		for (i = 0; i < tokc; i++)
 			if (!fstrstr(item->text, tokv[i]))
 				break;
-		if (i != tokc) /* not all tokens match */
+		if (i != tokc && !(dynamic && *dynamic)) /* not all tokens match */
 			continue;
 		/* exact matches go first, then prefixes with high priority, then prefixes, then substrings */
 		if (!tokc || !fstrncmp(text, item->text, textsize))
@@ -320,7 +369,7 @@ match(void)
 			appenditem(item, &lhpprefix, &hpprefixend);
 		else if (!fstrncmp(tokv[0], item->text, len))
 			appenditem(item, &lprefix, &prefixend);
-		else if (!use_prefix)
+		else
 			appenditem(item, &lsubstr, &substrend);
 	}
 	if (lhpprefix) {
@@ -339,7 +388,7 @@ match(void)
 			matches = lprefix;
 		matchend = prefixend;
 	}
-	if (!use_prefix && lsubstr)
+	if (lsubstr)
 	{
 		if (matches) {
 			matchend->right = lsubstr;
@@ -407,7 +456,6 @@ keypress(XKeyEvent *ev)
 {
 	char buf[32];
 	int len;
-	struct item * item;
 	KeySym ksym;
 	Status status;
 
@@ -599,17 +647,12 @@ insert:
 		}
 		break;
 	case XK_Tab:
-		if (!matches) break; /* cannot complete no matches */
-		strncpy(text, matches->text, sizeof text - 1);
+		if (!sel)
+			return;
+		strncpy(text, sel->text, sizeof text - 1);
 		text[sizeof text - 1] = '\0';
-		len = cursor = strlen(text); /* length of longest common prefix */
-		for (item = matches; item && item->text; item = item->right) {
-			cursor = 0;
-			while (cursor < len && text[cursor] == item->text[cursor])
-				cursor++;
-			len = cursor;
-		}
-		memset(text + len, '\0', strlen(text) - len);
+		cursor = strlen(text);
+		match();
 		break;
 	}
 
@@ -673,7 +716,7 @@ xinitvisual()
 }
 
 static void
-readstdin(void)
+readstdin(FILE* stream)
 {
 	char buf[sizeof text], *p;
 	size_t i, imax = 0, size = 0;
@@ -685,7 +728,7 @@ readstdin(void)
 	}
 
 	/* read each line from stdin and add it to the item list */
-	for (i = 0; fgets(buf, sizeof buf, stdin); i++)	{
+	for (i = 0; fgets(buf, sizeof buf, stream); i++) {
 		if (i + 1 >= size / sizeof *items)
 			if (!(items = realloc(items, (size += BUFSIZ))))
 				die("cannot realloc %u bytes:", size);
@@ -704,7 +747,8 @@ readstdin(void)
 	if (items)
 		items[i].text = NULL;
 	inputw = items ? TEXTW(items[imax].text) : 0;
-	lines = MIN(lines, i);
+	if (!dynamic || !*dynamic)
+		lines = MIN(lines, i);
 }
 
 static void
@@ -716,6 +760,9 @@ run(void)
 		if (XFilterEvent(&ev, win))
 			continue;
 		switch(ev.type) {
+		case ButtonPress:
+			buttonpress(&ev);
+			break;
 		case DestroyNotify:
 			if (ev.xdestroywindow.window != win)
 				break;
@@ -766,6 +813,8 @@ setup(void)
 
 	clip = XInternAtom(dpy, "CLIPBOARD",   False);
 	utf8 = XInternAtom(dpy, "UTF8_STRING", False);
+	type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+	dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 
 	/* calculate menu geometry */
 	bh = drw->fonts->h + 2;
@@ -829,10 +878,11 @@ setup(void)
 	match();
 
 	/* create menu window */
-	swa.override_redirect = True;
+	swa.override_redirect = managed ? False : True;
 	swa.background_pixel = 0;
 	swa.colormap = cmap;
 	swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask
+	| ButtonPressMask
 	;
 	win = XCreateWindow(dpy, parentwin, x, y, mw, mh, border_width,
 	                    depth, InputOutput, visual,
@@ -841,6 +891,8 @@ setup(void)
 	if (border_width)
 		XSetWindowBorder(dpy, win, scheme[SchemeSel][ColBg].pixel);
 	XSetClassHint(dpy, win, &ch);
+	XChangeProperty(dpy, win, type, XA_ATOM, 32, PropModeReplace,
+			(unsigned char *) &dock, 1);
 
 
 	/* input methods */
@@ -850,6 +902,14 @@ setup(void)
 	xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
 	                XNClientWindow, win, XNFocusWindow, win, NULL);
 
+	if (managed) {
+		XTextProperty prop;
+		char *windowtitle = prompt != NULL ? prompt : "dmenu";
+		Xutf8TextListToTextProperty(dpy, &windowtitle, 1, XUTF8StringStyle, &prop);
+		XSetWMName(dpy, win, &prop);
+		XSetTextProperty(dpy, win, &prop, XInternAtom(dpy, "_NET_WM_NAME", False));
+		XFree(prop.value);
+	}
 
 	XMapRaised(dpy, win);
 	if (embed) {
@@ -873,19 +933,19 @@ usage(void)
 		"f"
 		"s"
 		"n"
-		"x"
 		"F"
 		"P"
 		"] "
+		"[-wm] "
 		"[-l lines] [-p prompt] [-fn font] [-m monitor]"
 		"\n             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]"
 		"\n            "
 		" [ -o opacity]"
 		" [-bw width]"
-		" [-hb color] [-hf color] [-hp items]"
 		" [-h height]"
 		"\n [-nhb color] [-nhf color] [-shb color] [-shf color]" // highlight colors
-		"\n", stderr);
+	    "\n [-hb color] [-hf color] [-hp items]"
+		"\n [-dy command]\n", stderr);
 	exit(1);
 }
 
@@ -910,10 +970,10 @@ main(int argc, char *argv[])
 		} else if (!strcmp(argv[i], "-s")) { /* case-sensitive item matching */
 			fstrncmp = strncmp;
 			fstrstr = strstr;
+		} else if (!strcmp(argv[i], "-wm")) { /* display as managed wm window */
+			managed = 1;
 		} else if (!strcmp(argv[i], "-n")) { /* instant select only match */
 			instant = !instant;
-		} else if (!strcmp(argv[i], "-x")) { /* invert use_prefix */
-			use_prefix = !use_prefix;
 		} else if (!strcmp(argv[i], "-F")) { /* disable/enable fuzzy matching, depends on default */
 			fuzzy = !fuzzy;
 		} else if (!strcmp(argv[i], "-P")) { /* is the input a password */
@@ -941,14 +1001,12 @@ main(int argc, char *argv[])
 			colors[SchemeNorm][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-sb"))  /* selected background color */
 			colors[SchemeSel][ColBg] = argv[++i];
-		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
-			colors[SchemeSel][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-hb"))  /* high priority background color */
 			colors[SchemeHp][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-hf")) /* low priority background color */
 			colors[SchemeHp][ColFg] = argv[++i];
-		else if (!strcmp(argv[i], "-hp"))
-			hpitems = tokenize(argv[++i], ",", &hplength);
+		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
+			colors[SchemeSel][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-nhb")) /* normal hi background color */
 			colors[SchemeNormHighlight][ColBg] = argv[++i];
 		else if (!strcmp(argv[i], "-nhf")) /* normal hi foreground color */
@@ -959,6 +1017,10 @@ main(int argc, char *argv[])
 			colors[SchemeSelHighlight][ColFg] = argv[++i];
 		else if (!strcmp(argv[i], "-w"))   /* embedding window id */
 			embed = argv[++i];
+		else if (!strcmp(argv[i], "-dy"))  /* dynamic command to run */
+			dynamic = argv[++i];
+		else if (!strcmp(argv[i], "-hp"))
+			hpitems = tokenize(argv[++i], ",", &hplength);
 		else if (!strcmp(argv[i], "-bw"))  /* border width around dmenu */
 			border_width = atoi(argv[++i]);
 		else
@@ -989,9 +1051,11 @@ main(int argc, char *argv[])
 
 	if (fast && !isatty(0)) {
 		grabkeyboard();
-		readstdin();
+		if(!(dynamic && *dynamic))
+			readstdin(stdin);
 	} else {
-		readstdin();
+		if(!(dynamic && *dynamic))
+			readstdin(stdin);
 		grabkeyboard();
 	}
 	setup();
