@@ -2,3 +2,5 @@ tags
 patch/
 flexipatch-finalizer
 .backup
+dmenu.gammel
+dmenu.backup

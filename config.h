@@ -2,7 +2,7 @@
 /* Default settings; can be overriden by command line. */
 
 static int topbar              = 0;    /* -b  option; if 0, dmenu appears at bottom */
-static double opacity          = 0.9;  /* -o  option; defines alpha translucency */
+static double opacity          = 0.95;  /* -o  option; defines alpha translucency */
 static int fuzzy               = 1;    /* -F  option; if 0, dmenu doesn't use fuzzy matching */
 static int instant             = 1;    /* -n  option; if 1, selects matching item without the need to press enter */
 static int center              = 1;    /* -c  option; if 0, dmenu won't be centered on the screen */
@@ -51,5 +51,5 @@ static const char startpipe[] = "#";
 static const char worddelimiters[] = " ";
 
 /* Size of the window border */
-static unsigned int border_width = 5;
+static unsigned int border_width = 2;
 
