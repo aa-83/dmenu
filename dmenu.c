@@ -7,7 +7,6 @@
 #include <strings.h>
 #include <time.h>
 #include <unistd.h>
-
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -15,8 +14,6 @@
 #include <X11/extensions/Xinerama.h>
 #endif
 #include <X11/Xft/Xft.h>
-
-/* Patch incompatibility overrides */
 
 #include "drw.h"
 #include "util.h"
@@ -78,7 +75,6 @@ static Drw *drw;
 static Clr *scheme[SchemeLast];
 
 #include "patch/include.h"
-
 #include "config.h"
 
 static char * cistrstr(const char *s, const char *sub);
